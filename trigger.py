@@ -112,9 +112,9 @@ def triggers_actions(triggers_id, actions_id, zapi):
     return triggers_actions
 
 def main():
-    ZBX_USER = "apiuser"
-    ZBX_PASS = "DmXejqpa0"
-    ZBX_URL = "https://zbx.ifmon.ru/zabbix"
+    ZBX_USER = ""
+    ZBX_PASS = ""
+    ZBX_URL = ""
     zapi = ZabbixAPI(ZBX_URL, user = ZBX_USER, password = ZBX_PASS)
 
     triggerid = [trigger["triggerid"] for trigger in zapi.trigger.get(monitored = True)]
