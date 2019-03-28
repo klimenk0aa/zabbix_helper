@@ -1,7 +1,8 @@
 from zabbix.api import ZabbixAPI
 import json
+import parmap
 
-def triggers_actions(triggers_id, actions_id, zapi):
+def triggers_actions(triggers_id, actions_id):
     triggers_actions = dict()
     actions = zapi.action.get(selectFilter="extend" ,output=["filter"], actionids = actions_id)
     triggers_info = zapi.trigger.get(triggerids = triggers_id, 
@@ -115,11 +116,12 @@ def main():
     ZBX_USER = ""
     ZBX_PASS = ""
     ZBX_URL = ""
+    global zapi
     zapi = ZabbixAPI(ZBX_URL, user = ZBX_USER, password = ZBX_PASS)
 
     triggerid = [trigger["triggerid"] for trigger in zapi.trigger.get(monitored = True)]
     actions = [action["actionid"] for action in zapi.action.get(filter={"eventsource":"0", "status": "0"})]
-    resolve_result = triggers_actions(triggerid, actions, zapi)
+    resolve_result = parmap.map(triggers_actions, triggerid, actions,  pm_processes=16,  pm_parallel=True)
     print(json.dumps(resolve_result, indent = 4))
 
 if __name__ == '__main__':
