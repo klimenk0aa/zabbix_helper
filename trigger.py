@@ -4,36 +4,33 @@ import json
 def triggers_actions(triggers_id, actions_id, zapi):
     triggers_actions = dict()
     actions = zapi.action.get(selectFilter="extend" ,output=["filter"], actionids = actions_id)
-    for triggerid in triggers_id:
-        trigger_info = zapi.trigger.get(triggerids = triggerid, 
-                                        expandDescription=True, 
-                                        selectGroups="groupid", 
-                                        selectHosts="hostid", 
-                                        selectTags="extend",
-                                        selectItems="itemid", 
-                                        output=["triggerid", "description", "priority", "templateid"])
-        #print(json.dumps(trigger_info[0], indent=4))
-
+    triggers_info = zapi.trigger.get(triggerids = triggers_id, 
+                                    expandDescription=True, 
+                                    selectGroups="groupid", 
+                                    selectHosts="hostid", 
+                                    selectTags="extend",
+                                    selectItems="itemid", 
+                                    output=["triggerid", "description", "priority", "templateid"])
+    for trigger_info in triggers_info:
         trigger_data = dict()
-        items = [ item["itemid"] for item in trigger_info[0]["items"]]
+        items = [ item["itemid"] for item in trigger_info["items"]]
         applications = zapi.application.get(itemids=items, output = ["name"])
 
         app_name = [app["name"] for app in applications]
-        groups = [gr["groupid"] for gr in trigger_info[0]["groups"]]
-        hosts = [h["hostid"] for h in trigger_info[0]["hosts"]]
-        tags = list({t["tag"] for t in trigger_info[0]["tags"]})
-        tags_values = trigger_info[0]["tags"]
+        groups = [gr["groupid"] for gr in trigger_info["groups"]]
+        hosts = [h["hostid"] for h in trigger_info["hosts"]]
+        tags = list({t["tag"] for t in trigger_info["tags"]})
+        tags_values = trigger_info["tags"]
 
         trigger_data["0"] = groups
         trigger_data["1"] = hosts
-        trigger_data["2"] = [trigger_info[0]["triggerid"]]
-        trigger_data["3"] = [trigger_info[0]["description"]]
-        trigger_data["4"] = [trigger_info[0]["priority"]]
-        trigger_data["13"] = [trigger_info[0]["templateid"]]
+        trigger_data["2"] = [trigger_info["triggerid"]]
+        trigger_data["3"] = [trigger_info["description"]]
+        trigger_data["4"] = [trigger_info["priority"]]
+        trigger_data["13"] = [trigger_info["templateid"]]
         trigger_data["15"] = app_name
         trigger_data["25"] = tags
         trigger_data["26"] = tags_values
-
 
         def var_resolver(var):
             """ cond_type
@@ -106,27 +103,24 @@ def triggers_actions(triggers_id, actions_id, zapi):
         for action in actions:
             if action["filter"]["eval_formula"]:
                 for cond in action["filter"]["conditions"]:
-                    #print(cond)
-                    #резолвер кондишенов в переменные формулы. приримает cond возвращает res
                     res = var_resolver(cond)
                     exec("%s = %s" % (cond["formulaid"], res))
-                    #print(cond, res)
-                    
                 action_complite = eval(action["filter"]["eval_formula"])
                 if action_complite:
                     actions_id.append(action["actionid"])
-        triggers_actions[triggerid] = actions_id
+        triggers_actions[trigger_info["triggerid"]] = actions_id
     return triggers_actions
 
 def main():
-    ZBX_USER = ""
-    ZBX_PASS = ""
-    ZBX_URL = ""
+    ZBX_USER = "apiuser"
+    ZBX_PASS = "DmXejqpa0"
+    ZBX_URL = "https://zbx.ifmon.ru/zabbix"
     zapi = ZabbixAPI(ZBX_URL, user = ZBX_USER, password = ZBX_PASS)
 
-    triggerid = []
-    actions = zapi.action.get(filter={"eventsource":"0", "status": "0"})
-    print(triggers_actions(triggerid,actions,zapi))
+    triggerid = [trigger["triggerid"] for trigger in zapi.trigger.get(monitored = True)]
+    actions = [action["actionid"] for action in zapi.action.get(filter={"eventsource":"0", "status": "0"})]
+    resolve_result = triggers_actions(triggerid, actions, zapi)
+    print(json.dumps(resolve_result, indent = 4))
 
 if __name__ == '__main__':
     main()
