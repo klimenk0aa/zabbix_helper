@@ -2,6 +2,8 @@ from zabbix.api import ZabbixAPI
 import json
 
 def triggers_actions(triggers_id, actions_id, zapi):
+    zapi_version = zapi.apiinfo.version().split('.')
+    api_version = int(zapi_version[0])*10+int(zapi_version[1])
     triggers_actions = dict()
     actions = zapi.action.get(selectFilter="extend" ,output=["filter"], actionids = actions_id)
     triggers_info = zapi.trigger.get(triggerids = triggers_id, 
@@ -19,8 +21,6 @@ def triggers_actions(triggers_id, actions_id, zapi):
         app_name = [app["name"] for app in applications]
         groups = [gr["groupid"] for gr in trigger_info["groups"]]
         hosts = [h["hostid"] for h in trigger_info["hosts"]]
-        tags = list({t["tag"] for t in trigger_info["tags"]})
-        tags_values = trigger_info["tags"]
 
         trigger_data["0"] = groups
         trigger_data["1"] = hosts
@@ -29,8 +29,11 @@ def triggers_actions(triggers_id, actions_id, zapi):
         trigger_data["4"] = [trigger_info["priority"]]
         trigger_data["13"] = [trigger_info["templateid"]]
         trigger_data["15"] = app_name
-        trigger_data["25"] = tags
-        trigger_data["26"] = tags_values
+        if api_version > 30:
+            trigger_data["25"] = tags
+            trigger_data["26"] = tags_values
+            tags = list({t["tag"] for t in trigger_info["tags"]})
+            tags_values = trigger_info["tags"]
 
         def var_resolver(var):
             """ cond_type
@@ -82,9 +85,13 @@ def triggers_actions(triggers_id, actions_id, zapi):
 
                 elif var["operator"] == "3":
                     res = False
-                    for app in trigger_data[var["conditiontype"]]:
-                        if var["value"] not in app:
-                            res = True
+                    if trigger_data[var["conditiontype"]]:
+                        for app in trigger_data[var["conditiontype"]]:
+                            if var["value"] not in app:
+                                res = True
+                    else:
+                       res = True
+                     
 
                 elif var["operator"] == "5":
                     res = False 
@@ -122,6 +129,7 @@ def main():
     actions = [action["actionid"] for action in zapi.action.get(filter={"eventsource":"0", "status": "0"})]
     resolve_result = triggers_actions(triggerid, actions, zapi)
     print(json.dumps(resolve_result, indent = 4))
-
+    zapi.user.logout()
+    
 if __name__ == '__main__':
     main()
