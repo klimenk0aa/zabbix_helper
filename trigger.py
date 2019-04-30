@@ -39,6 +39,7 @@ def triggers_actions(triggers_id, actions_id, zapi):
                 2 - триггер;
                 3 - имя триггера;
                 4 - важность триггера;
+                5 - значение триггера (PROBLEM/OK);
                 6 - период времени; 
                 13 - шаблон узла сети;
                 15 - группа элементов данных;
@@ -64,7 +65,7 @@ def triggers_actions(triggers_id, actions_id, zapi):
                 "4": " in ",
                 "7": " not in "
             }
-            if var["conditiontype"] in ["6", "16"]:
+            if var["conditiontype"] in ["5", "6", "16"]:
                 res = True
             else:
                 if var["operator"] in operators_simple:
